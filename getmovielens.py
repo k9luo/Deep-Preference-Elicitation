@@ -44,6 +44,7 @@ def main(args):
     save_numpy(rtest, args.path, "Rtest")
     save_numpy(rtime, args.path, "Rtime")
 
+
 if __name__ == "__main__":
     # Commandline arguments
     parser = argparse.ArgumentParser(description="GetMovieLens")
