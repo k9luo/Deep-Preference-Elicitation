@@ -1,4 +1,6 @@
+from predict.predictor import sampling_predict
 from providers.filter import filter_users
+from providers.update_matrix import update_matrix
 from utils.argcheck import check_float_positive, check_int_positive, ratio
 from utils.io import load_numpy
 from utils.modelnames import active_models, rec_models
@@ -68,6 +70,54 @@ def main(args):
     progress.section("Training")
     model.train_model(matrix_train[:train_index], args.corruption, args.epoch)
 
+    for i in range(args.iter):
+        print('This is step {} \n'.format(i))
+        print('The number of ones in train set is {}'.format(len(matrix_train[train_index:].nonzero()[0])))
+        print('The number of ones in active set is {}'.format(len(matrix_active[train_index:].nonzero()[0])))
+
+        progress.section("Predicting")
+        observation = active_models[active_model](model, matrix_train[train_index:].A, args.ci, args.num_latent_sampling)
+
+        progress.section("Update Train Set")
+        matrix_train, history_items = update_matrix(history_items, matrix_train,
+                                                    matrix_active, observation,
+                                                    train_index, args.iterative,
+                                                    args.sample_from_all,
+                                                    args.num_item_per_iter,
+                                                    args.iter, args.gpu)
+
+        if not args.iterative:
+            break
+
+    print('The number of ones in train set is {}'.format(len(matrix_train[train_index:].nonzero()[0])))
+
+    progress.section("Re-Training")
+    model.train_model(matrix_train, args.corruption, args.epoch)
+
+    progress.section("Re-Predicting")
+    observation = active_models['Greedy'](model, matrix_train.A)
+
+    result = {}
+    for topk in [1, 5, 10, 50]:
+        predict_items, _ = sampling_predict(prediction_scores=observation[train_index:],
+                                            topK=topk,
+                                            matrix_train=matrix_train[train_index:],
+                                            matrix_active=matrix_active[train_index:],
+                                            sample_from_all=True,
+                                            iterative=False,
+                                            history_items=np.array([]),
+                                            gpu=gpu)
+
+        progress.section("Create Metrics")
+        result.update(eval(matrix_test[train_index:], topk, predict_items))
+
+    metrics_result.append(result)
+
+    model.sess.close()
+    tf.reset_default_graph()
+
+    return metrics_result
+
 
 if __name__ == "__main__":
     # Commandline arguments
@@ -79,13 +129,15 @@ if __name__ == "__main__":
     parser.add_argument('-a', dest='active', default='Ractive.npz')
     parser.add_argument('-active-model', dest='active_model', default="ThompsonSampling") #print
     parser.add_argument('-c', dest='corruption', type=check_float_positive, default=0.5)
+    parser.add_argument('-ci', dest='confidence', type=check_int_positive, default=1)
     parser.add_argument('-d', dest='path', default="data/") #print
     parser.add_argument('-e', dest='epoch', type=check_int_positive, default=1) #print
     parser.add_argument('-i', dest='iter', type=check_int_positive, default=1) #print
     parser.add_argument('-k', dest='topk', type=check_int_positive, default=50) #print
     parser.add_argument('-l', dest='lamb', type=check_float_positive, default=100) #print
     parser.add_argument('-learning-rate', dest='learning_rate', type=check_float_positive, default=100.0) #print
-    parser.add_argument('-num_item_per_iter', dest='num_item_per_iter', type=check_int_positive, default=1)
+    parser.add_argument('-num-item-per-iter', dest='num_item_per_iter', type=check_int_positive, default=1)
+    parser.add_argument('-num-latent-sampling', dest='num_latent_sampling', type=check_int_positive, default=5)
     parser.add_argument('-optimizer', dest='optimizer', default="RMSProp")
     parser.add_argument('-r', dest='rank', type=check_int_positive, default=100) #print
     parser.add_argument('-ratio', dest='ratio', type=ratio, default='0.5, 0.0, 0.5') #print
