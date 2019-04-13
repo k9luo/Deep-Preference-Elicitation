@@ -1,0 +1,11 @@
+parameters:
+    models: ThompsonSampling
+    iterative: [True, False]
+    sample_from_all: [True, False]
+    corruption: [0.5]
+    alpha: [1]
+    rank: [200]
+    topK: [5, 10, 15, 20, 50]
+    epoch: 300
+    lambda: [0.0001]
+    metric: [R-Precision, NDCG, Precision, Recall, MAP]

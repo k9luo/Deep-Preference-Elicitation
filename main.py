@@ -1,3 +1,4 @@
+from evaluation.metrics import eval
 from predict.predictor import sampling_predict
 from providers.filter import filter_users
 from providers.update_matrix import update_matrix
@@ -8,6 +9,8 @@ from utils.progress import inhour, WorkSplitter
 from utils.regularizers import Regularizer
 
 import argparse
+import numpy as np
+import tensorflow as tf
 import time
 
 
@@ -30,6 +33,9 @@ def main(args):
     print("Epoch: {}".format(args.epoch))
     print("Active Learning Iteration: {}".format(args.iter))
     print("Evaluation Ranking Topk: {}".format(args.topk))
+    print("UCB Confidence: {}".format(args.confidence)
+    print("Number of Item per Active Iteration: {}".format(args.num_item_per_iter))
+    print("UCB Number of Latent Sampling: {}".format_map(args.num_latent_sampling))
 
     # Load Data
     progress.section("Loading Data")
@@ -54,18 +60,16 @@ def main(args):
                                                                train_index=train_index,
                                                                active_threshold=2*args.num_item_per_iter*args.iter,
                                                                test_threshold=2*args.topk)
-    # TODO: After this point
-    import ipdb; ipdb.set_trace()
 
     m, n = matrix_train.shape
 
     metrics_result = []
     history_items = np.array([])
 
-    model = rec_models[rec_model](observation_dim=n, latent_dim=args.rank,
-                                  batch_size=128, lamb=args.lamb,
-                                  learning_rate=args.learning_rate,
-                                  optimizer=Regularizer[args.optimizer])
+    model = rec_models[args.rec_model](observation_dim=n, latent_dim=args.rank,
+                                       batch_size=128, lamb=args.lamb,
+                                       learning_rate=args.learning_rate,
+                                       optimizer=Regularizer[args.optimizer])
 
     progress.section("Training")
     model.train_model(matrix_train[:train_index], args.corruption, args.epoch)
@@ -76,7 +80,7 @@ def main(args):
         print('The number of ones in active set is {}'.format(len(matrix_active[train_index:].nonzero()[0])))
 
         progress.section("Predicting")
-        observation = active_models[active_model](model, matrix_train[train_index:].A, args.ci, args.num_latent_sampling)
+        observation = active_models[args.active_model](model=model, matrix=matrix_train[train_index:].A, ci=args.confidence, num_latent_sampling=args.num_latent_sampling)
 
         progress.section("Update Train Set")
         matrix_train, history_items = update_matrix(history_items, matrix_train,
@@ -95,10 +99,10 @@ def main(args):
     model.train_model(matrix_train, args.corruption, args.epoch)
 
     progress.section("Re-Predicting")
-    observation = active_models['Greedy'](model, matrix_train.A)
+    observation = active_models['Greedy'](model=model, matrix=matrix_train.A)
 
     result = {}
-    for topk in [1, 5, 10, 50]:
+    for topk in [5, 10, 15, 20, 50]:
         predict_items, _ = sampling_predict(prediction_scores=observation[train_index:],
                                             topK=topk,
                                             matrix_train=matrix_train[train_index:],
@@ -106,7 +110,7 @@ def main(args):
                                             sample_from_all=True,
                                             iterative=False,
                                             history_items=np.array([]),
-                                            gpu=gpu)
+                                            gpu=args.gpu)
 
         progress.section("Create Metrics")
         result.update(eval(matrix_test[train_index:], topk, predict_items))
@@ -115,7 +119,7 @@ def main(args):
 
     model.sess.close()
     tf.reset_default_graph()
-
+    import ipdb; ipdb.set_trace()
     return metrics_result
 
 
@@ -131,15 +135,15 @@ if __name__ == "__main__":
     parser.add_argument('-c', dest='corruption', type=check_float_positive, default=0.5)
     parser.add_argument('-ci', dest='confidence', type=check_int_positive, default=1)
     parser.add_argument('-d', dest='path', default="data/") #print
-    parser.add_argument('-e', dest='epoch', type=check_int_positive, default=1) #print
+    parser.add_argument('-e', dest='epoch', type=check_int_positive, default=100) #print
     parser.add_argument('-i', dest='iter', type=check_int_positive, default=1) #print
     parser.add_argument('-k', dest='topk', type=check_int_positive, default=50) #print
-    parser.add_argument('-l', dest='lamb', type=check_float_positive, default=100) #print
-    parser.add_argument('-learning-rate', dest='learning_rate', type=check_float_positive, default=100.0) #print
+    parser.add_argument('-l', dest='lamb', type=check_float_positive, default=0.0001) #print
+    parser.add_argument('-learning-rate', dest='learning_rate', type=check_float_positive, default=0.0001) #print
     parser.add_argument('-num-item-per-iter', dest='num_item_per_iter', type=check_int_positive, default=1)
     parser.add_argument('-num-latent-sampling', dest='num_latent_sampling', type=check_int_positive, default=5)
     parser.add_argument('-optimizer', dest='optimizer', default="RMSProp")
-    parser.add_argument('-r', dest='rank', type=check_int_positive, default=100) #print
+    parser.add_argument('-r', dest='rank', type=check_int_positive, default=200) #print
     parser.add_argument('-ratio', dest='ratio', type=ratio, default='0.5, 0.0, 0.5') #print
     parser.add_argument('-rec-model', dest='rec_model', default="VAE-CF") #print
     parser.add_argument('-s', dest='seed', type=check_int_positive, default=8292)

@@ -19,7 +19,7 @@ def update_matrix(history_items, matrix_train, matrix_active, observation, train
                                                     history_items=history_items,
                                                     gpu=gpu)
 
-    # import ipdb; ipdb.set_trace()
+#    import ipdb; ipdb.set_trace()
 
 
     mask_row = train_index + np.repeat(np.arange(len(predict_items)), topk)
@@ -27,5 +27,6 @@ def update_matrix(history_items, matrix_train, matrix_active, observation, train
     mask_data = np.full(len(predict_items)*topk, True)
     mask = csr_matrix((mask_data, (mask_row, mask_col)), shape=matrix_train.shape)
     matrix_train[mask] = matrix_active[mask]
+#    import ipdb; ipdb.set_trace()
 
     return matrix_train, history_items
