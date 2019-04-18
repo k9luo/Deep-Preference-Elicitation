@@ -63,7 +63,6 @@ def main(args):
 
     m, n = matrix_train.shape
 
-    metrics_result = []
     history_items = np.array([])
 
     model = rec_models[args.rec_model](observation_dim=n, latent_dim=args.rank,
@@ -115,12 +114,11 @@ def main(args):
         progress.section("Create Metrics")
         result.update(eval(matrix_test[train_index:], topk, predict_items))
 
-    metrics_result.append(result)
+    print(result)
 
     model.sess.close()
     tf.reset_default_graph()
     import ipdb; ipdb.set_trace()
-    return metrics_result
 
 
 if __name__ == "__main__":
