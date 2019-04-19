@@ -33,9 +33,9 @@ def main(args):
     print("Epoch: {}".format(args.epoch))
     print("Active Learning Iteration: {}".format(args.iter))
     print("Evaluation Ranking Topk: {}".format(args.topk))
-    print("UCB Confidence: {}".format(args.confidence)
+    print("UCB Confidence: {}".format(args.confidence))
     print("Number of Item per Active Iteration: {}".format(args.num_item_per_iter))
-    print("UCB Number of Latent Sampling: {}".format_map(args.num_latent_sampling))
+    print("UCB Number of Latent Sampling: {}".format(args.num_latent_sampling))
 
     # Load Data
     progress.section("Loading Data")
@@ -118,7 +118,19 @@ def main(args):
 
     model.sess.close()
     tf.reset_default_graph()
-    import ipdb; ipdb.set_trace()
+#    import ipdb; ipdb.set_trace()
+    result['Model'] = args.active_model
+    result['Iterative'] = args.iterative
+    result['SampleFromAll'] = args.sample_from_all
+    result['C'] = args.confidence
+    import pandas as pd
+    current_df = pd.DataFrame(result)
+#    import ipdb; ipdb.set_trace()
+
+
+    previous_df = pd.read_csv('final_result.csv', sep='\t', encoding='utf-8')
+    result_df = pd.concat([previous_df, current_df])
+    result_df.to_csv('final_result.csv', sep='\t', encoding='utf-8', index=False)
 
 
 if __name__ == "__main__":
@@ -131,9 +143,9 @@ if __name__ == "__main__":
     parser.add_argument('-a', dest='active', default='Ractive.npz')
     parser.add_argument('-active-model', dest='active_model', default="ThompsonSampling") #print
     parser.add_argument('-c', dest='corruption', type=check_float_positive, default=0.5)
-    parser.add_argument('-ci', dest='confidence', type=check_int_positive, default=1)
+    parser.add_argument('-ci', dest='confidence', type=check_float_positive, default=0.5)
     parser.add_argument('-d', dest='path', default="data/") #print
-    parser.add_argument('-e', dest='epoch', type=check_int_positive, default=100) #print
+    parser.add_argument('-e', dest='epoch', type=check_int_positive, default=300) #print
     parser.add_argument('-i', dest='iter', type=check_int_positive, default=1) #print
     parser.add_argument('-k', dest='topk', type=check_int_positive, default=50) #print
     parser.add_argument('-l', dest='lamb', type=check_float_positive, default=0.0001) #print
@@ -141,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument('-num-item-per-iter', dest='num_item_per_iter', type=check_int_positive, default=1)
     parser.add_argument('-num-latent-sampling', dest='num_latent_sampling', type=check_int_positive, default=5)
     parser.add_argument('-optimizer', dest='optimizer', default="RMSProp")
-    parser.add_argument('-r', dest='rank', type=check_int_positive, default=200) #print
+    parser.add_argument('-r', dest='rank', type=check_int_positive, default=50) #print
     parser.add_argument('-ratio', dest='ratio', type=ratio, default='0.5, 0.0, 0.5') #print
     parser.add_argument('-rec-model', dest='rec_model', default="VAE-CF") #print
     parser.add_argument('-s', dest='seed', type=check_int_positive, default=8292)
