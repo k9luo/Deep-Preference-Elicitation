@@ -1,0 +1,3 @@
+Iterative,R-Precision,NDCG,MAP@5,MAP@10,Precision@5,Precision@10,Recall@5,Recall@10
+False,0.2233,0.2939,0.6364,0.5995,0.6030,0.5391,0.0442,0.0785
+True,0.2337,0.3011,0.6254,0.5841,0.5809,0.5227,0.0424,0.0759
