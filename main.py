@@ -92,6 +92,7 @@ def main(args):
         if not args.iterative:
             break
 
+#    matrix_train = matrix_train + matrix_active
     print('The number of ones in train set is {}'.format(len(matrix_train[train_index:].nonzero()[0])))
 
     progress.section("Re-Training")
