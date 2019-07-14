@@ -5,8 +5,8 @@ import numpy as np
 # Remove users who have less than 2*topk positive ratings in active set
 # from active and test set.
 def filter_users(matrix_train, matrix_active, matrix_test, train_index, active_threshold, test_threshold):
-    active_user_num_nonzero = np.array(matrix_active.sum(axis=1)).ravel()
-    active_users = np.where(active_user_num_nonzero >= active_threshold)[0]
+    active_user_num_nonzero = np.array(matrix_active[train_index:,].sum(axis=1)).ravel()
+    active_users = train_index + np.where(active_user_num_nonzero >= active_threshold)[0]
 
     users = np.concatenate([np.arange(train_index), active_users])
 
